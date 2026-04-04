@@ -45,10 +45,10 @@ async function startInteractiveConsole() {
         console.log('--------------------------------------------------\n');
 
         let isRunning = true;
-        
+
         while (isRunning) {
             const answer = await askQuestion('Report > ');
-            
+
             if (answer.toLowerCase().trim() === 'exit' || answer.toLowerCase().trim() === 'quit') {
                 isRunning = false;
                 break;
@@ -70,7 +70,7 @@ async function startInteractiveConsole() {
 
                 const rawJson = response.text;
                 const extractedData = JSON.parse(rawJson);
-                
+
                 console.log(`\n🤖 Extracted Structured Data:`);
                 console.log(extractedData);
                 console.log('\n💾 Saving directly to the Tasks database...');
@@ -93,8 +93,8 @@ async function startInteractiveConsole() {
                 await newTask.save();
                 console.log(`✅ Success! Task ID saved: ${newTask._id}\n`);
             } catch (err) {
-                 console.error('❌ Error extracting or saving:', err.message);
-                 console.log();
+                console.error('❌ Error extracting or saving:', err.message);
+                console.log();
             }
         }
     } catch (err) {
