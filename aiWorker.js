@@ -3,6 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import Survey from './Survey.js';
 import Task from './Task.js';
+import { assignVolunteersToTask } from './matcher.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -10,11 +11,12 @@ dotenv.config();
 const SYSTEM_PROMPT = `
 You are a Crisis Response AI. Analyze the report and return a JSON object:
 
-- crisisType: The specific event (e.g., Flood, Fire, Earthquake, Chemical Spill).
-- needCategory: Categorize this into one of: [MEDICAL, SHELTER, FOOD, WATER, LOGISTICS].
-- severityScore: A number from 1 to 10 based on immediate danger.
+- isCrisisRelated: true if the text describes a crisis, disaster, emergency, or need for assistance. false if it is just a greeting, spam, or irrelevant.
+- crisisType: The specific event (e.g., Flood, Fire, Earthquake, Chemical Spill). Use "None" if isCrisisRelated is false.
+- needCategory: Categorize this into one of: [MEDICAL, SHELTER, FOOD, WATER, LOGISTICS]. Use "LOGISTICS" if isCrisisRelated is false.
+- severityScore: A number from 1 to 10 based on immediate danger. Use 1 if isCrisisRelated is false.
 - title: A very brief summary (e.g., "Building Fire on Main St").
-- requiredSkills: List of skills needed (e.g., ["Search and Rescue", "First Aid"]).
+- requiredSkills: List of skills needed (e.g., ["Search and Rescue", "First Aid"]). Empty list if isCrisisRelated is false.
 
 Return ONLY valid JSON.
 `;
@@ -67,6 +69,7 @@ async function processSurveys() {
                     needCategory: extractedData.needCategory || 'LOGISTICS',
                     requiredSkills: extractedData.requiredSkills || [],
                     severityScore: extractedData.severityScore || 5, // Fallback middle score
+                    isCrisisRelated: extractedData.isCrisisRelated ?? true,
                     location: survey.location,
                     reporterId: survey.reporterId,
                     offlineId: survey.offlineId,
@@ -75,6 +78,13 @@ async function processSurveys() {
 
                 await newTask.save();
                 console.log(`📝 Task created successfully for survey ID: ${survey._id}`);
+                
+                if (extractedData.isCrisisRelated === false) {
+                    console.log(`⚠️ Note: Analysis determined the survey text is NOT crisis-related. Assignments skipped.`);
+                } else {
+                    // Trigger the matching algorithm
+                    await assignVolunteersToTask(newTask._id);
+                }
 
                 // Mark survey as successfully processed
                 survey.isProcessed = true;

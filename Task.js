@@ -71,6 +71,11 @@ const taskSchema = new Schema(
       required: [true, 'Severity score is required'],
     },
 
+    isCrisisRelated: {
+      type: Boolean,
+      default: true,
+    },
+
     // ── System / Computed Fields ──────────────────────────────────────────────
 
     /**

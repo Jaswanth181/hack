@@ -11,10 +11,15 @@ async function seedData() {
         await mongoose.connect(process.env.MONGO_URI);
         console.log('✅ Connected to MongoDB for Seeding');
 
-        // Create a fake reporter
+        // Clear existing data (optional but good for clean testing)
+        await User.deleteMany({});
+        await Survey.deleteMany({});
+        console.log('🧹 Cleared existing Users and Surveys');
+
+        // 1. Create a fake reporter (TASK role)
         const mockUser = new User({
             name: "Jane Fieldworker",
-            email: "jane.field@example.com",
+            email: `jane.field.${crypto.randomUUID()}@example.com`,
             passwordHash: "dummyhash",
             role: "TASK",
             location: {
@@ -24,9 +29,41 @@ async function seedData() {
         });
         
         await mockUser.save();
-        console.log(`👤 Created mock user: ${mockUser._id}`);
+        console.log(`👤 Created mock reporter: ${mockUser._id}`);
 
-        // Create a couple of mock surveys from the field
+        // 2. Create the Volunteer Dump (FIELD role)
+        const volunteerSkills = [
+            ["Search and Rescue", "First Aid"],
+            ["Medical", "CPR"],
+            ["Logistics", "Driving"],
+            ["Driving", "Heavy Machinery"],
+            ["First Aid", "Translation"],
+            ["Food Distribution", "Logistics"],
+            ["Search and Rescue", "Swimming"],
+            ["Medical", "First Aid", "Triage"]
+        ];
+
+        const volunteers = volunteerSkills.map((skills, index) => ({
+            name: `Volunteer ${index + 1}`,
+            email: `volunteer${index + 1}.${crypto.randomUUID()}@example.com`,
+            passwordHash: "dummyhash",
+            role: "FIELD",
+            skills: skills,
+            location: {
+                type: "Point",
+                // Slightly randomize coordinates around Miami
+                coordinates: [
+                    -80.19179 + (Math.random() - 0.5) * 0.1, 
+                    25.76168 + (Math.random() - 0.5) * 0.1
+                ]
+            },
+            maxHoursPerWeek: 20
+        }));
+
+        const insertedVolunteers = await User.insertMany(volunteers);
+        console.log(`👷 Inserted ${insertedVolunteers.length} mock volunteers with varied skills!`);
+
+        // 3. Create a couple of mock surveys from the field
         const surveys = [
             {
                 reporterId: mockUser._id,

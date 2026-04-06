@@ -3,6 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import Task from './Task.js';
 import readline from 'readline';
+import { assignVolunteersToTask } from './matcher.js';
 
 // Load environment variables
 dotenv.config();
@@ -10,11 +11,12 @@ dotenv.config();
 const SYSTEM_PROMPT = `
 You are a Crisis Response AI. Analyze the report and return a JSON object:
 
-- crisisType: The specific event (e.g., Flood, Fire, Earthquake, Chemical Spill).
-- needCategory: Categorize this into one of: [MEDICAL, SHELTER, FOOD, WATER, LOGISTICS].
-- severityScore: A number from 1 to 10 based on immediate danger.
+- isCrisisRelated: true if the text describes a crisis, disaster, emergency, or need for assistance. false if it is just a greeting, spam, or irrelevant.
+- crisisType: The specific event (e.g., Flood, Fire, Earthquake, Chemical Spill). Use "None" if isCrisisRelated is false.
+- needCategory: Categorize this into one of: [MEDICAL, SHELTER, FOOD, WATER, LOGISTICS]. Use "LOGISTICS" if isCrisisRelated is false.
+- severityScore: A number from 1 to 10 based on immediate danger. Use 1 if isCrisisRelated is false.
 - title: A very brief summary (e.g., "Building Fire on Main St").
-- requiredSkills: List of skills needed (e.g., ["Search and Rescue", "First Aid"]).
+- requiredSkills: List of skills needed (e.g., ["Search and Rescue", "First Aid"]). Empty list if isCrisisRelated is false.
 
 Return ONLY valid JSON.
 `;
@@ -82,6 +84,7 @@ async function startInteractiveConsole() {
                     needCategory: extractedData.needCategory || 'LOGISTICS',
                     requiredSkills: extractedData.requiredSkills || [],
                     severityScore: extractedData.severityScore || 5,
+                    isCrisisRelated: extractedData.isCrisisRelated ?? true,
                     location: {
                         type: "Point",
                         coordinates: [-80.19179, 25.76168] // Placeholder coordinates for testing
@@ -92,6 +95,13 @@ async function startInteractiveConsole() {
 
                 await newTask.save();
                 console.log(`✅ Success! Task ID saved: ${newTask._id}\n`);
+                
+                if (extractedData.isCrisisRelated === false) {
+                    console.log(`⚠️ Note: Analysis determined the text is NOT crisis-related. Assigments skipped, but record was saved.`);
+                } else {
+                    // Trigger the matching algorithm
+                    await assignVolunteersToTask(newTask._id);
+                }
             } catch (err) {
                 console.error('❌ Error extracting or saving:', err.message);
                 console.log();
